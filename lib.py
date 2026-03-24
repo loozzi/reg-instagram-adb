@@ -279,32 +279,30 @@ class PhoneDevice:
         print("[✓] Cài đặt thành công!")
         return True
 
-    def open(self, apk_path: str) -> bool:
-        """Open an installed APK by resolving package and launchable activity.
+    def open(self, package: str) -> bool:
+        """Open an installed app using its package name.
 
         Example:
             >>> phone = PhoneDevice("emulator-5554")
-            >>> phone.open("./apk/app.apk")
+            >>> phone.open("com.example.app")
         """
-        package = self.get_package_name(apk_path)
         if not package:
             print("[!] Không lấy được package name")
             return False
 
         print(f"[*] Package: {package}")
 
-        result = subprocess.run(
-            f"aapt dump badging {apk_path}", shell=True, capture_output=True, text=True
-        )
         activity = None
-        for line in result.stdout.splitlines():
-            if "launchable-activity" in line:
-                activity = line.split("name='")[1].split("'")[0]
+        output = self.__adb(f"shell cmd package resolve-activity --brief {package}")
+        for line in output.splitlines():
+            value = line.strip()
+            if "/" in value and not value.startswith("priority="):
+                activity = value
                 break
 
         if activity:
             print(f"[*] Đang mở: {activity}")
-            self.__adb(f"shell am start -n {package}/{activity}")
+            self.__adb(f"shell am start -n {activity}")
         else:
             print("[*] Mở app bằng monkey...")
             self.__adb(
@@ -321,7 +319,8 @@ class PhoneDevice:
             >>> phone.install_and_open("./apk/app.apk")
         """
         if self.install(apk_path):
-            self.open(apk_path)
+            package = self.get_package_name(apk_path)
+            self.open(package)
 
     def uninstall_app(self, package_name: str):
         """Uninstall an app by its package name.

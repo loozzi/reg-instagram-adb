@@ -5,7 +5,7 @@ from lib import PhoneDevice, get_devices
 
 def register_ig(phone: PhoneDevice):
     package_name = phone.get_package_name("./apk/instagram-lite-503-0-0-8-107.apk")
-
+    print(package_name)
     if not package_name:
         print("Failed to get package name.")
         return
@@ -19,6 +19,7 @@ def register_ig(phone: PhoneDevice):
     phone.wait(1)
 
     phone.open(package_name)
+    phone.wait(5)
 
     phone.tap(600, 1500)
     phone.wait(1)
@@ -72,7 +73,11 @@ def __main__():
         print("No devices found.")
         return
 
-    phone = devices[0]
+    phone = devices[1]
     print(f"Using device: {phone}")
 
-    register_ig(phone)
+    register_ig(PhoneDevice(phone))
+
+
+if __name__ == "__main__":
+    __main__()
