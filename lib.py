@@ -1,11 +1,10 @@
 import base64
+import os
+import random
+import re
 import subprocess
 import time
-import random
-import os
 import zipfile
-import re
-
 from typing import Dict
 
 
@@ -62,7 +61,7 @@ class File:
     def __adb(self, command: str) -> str:
         return adb(command, self.__device_id)
 
-    def dump_database(self, save_path: str = '.'):
+    def dump_database(self, save_path: str = "."):
         """Pull the app's full SQLite database directory to the local machine.
 
         Example:
@@ -71,7 +70,7 @@ class File:
         """
         db_path = f"/data/data/{self.__package_name}/databases"
         os.makedirs(save_path, exist_ok=True)
-        print(f"[*] Dumping database: {self.__package_name}")   # 🐛 fix
+        print(f"[*] Dumping database: {self.__package_name}")  # 🐛 fix
         self.__adb(f"pull {db_path} {save_path}")
         print(f"[✓] Saved: {save_path}")
 
@@ -100,11 +99,23 @@ class File:
         print("=" * 40)
 
         tasks = [
-            ("Database",     f"/data/data/{self.__package_name}/databases",    f"{save_path}/databases"),
-            ("Shared Prefs", f"/data/data/{self.__package_name}/shared_prefs", f"{save_path}/shared_prefs"),
-            ("Files",        f"/data/data/{self.__package_name}/files",        f"{save_path}/files"),
-            ("Cache",        f"/data/data/{self.__package_name}/cache",        f"{save_path}/cache"),
-            ("External",     f"/sdcard/Android/data/{self.__package_name}",    f"{save_path}/external"),
+            (
+                "Database",
+                f"/data/data/{self.__package_name}/databases",
+                f"{save_path}/databases",
+            ),
+            (
+                "Shared Prefs",
+                f"/data/data/{self.__package_name}/shared_prefs",
+                f"{save_path}/shared_prefs",
+            ),
+            ("Files", f"/data/data/{self.__package_name}/files", f"{save_path}/files"),
+            ("Cache", f"/data/data/{self.__package_name}/cache", f"{save_path}/cache"),
+            (
+                "External",
+                f"/sdcard/Android/data/{self.__package_name}",
+                f"{save_path}/external",
+            ),
         ]
 
         for name, src, dst in tasks:
@@ -128,7 +139,9 @@ class ProxyConfig:
     def __adb(self, command: str) -> str:
         return adb(command, self.__device_id)
 
-    def set_proxy(self, host: str, port: int, username: str = None, password: str = None):
+    def set_proxy(
+        self, host: str, port: int, username: str = None, password: str = None
+    ):
         """Set HTTP proxy for the device, with optional authentication.
 
         Example:
@@ -142,7 +155,9 @@ class ProxyConfig:
 
         # Proxy có tài khoản → format: user:pass@host:port
         else:
-            output = self.__adb(f"shell settings put global http_proxy {username}:{password}@{host}:{port}")
+            output = self.__adb(
+                f"shell settings put global http_proxy {username}:{password}@{host}:{port}"
+            )
 
         if not output.strip():
             print(f"[✓] Proxy set: {host}:{port}")
@@ -161,7 +176,6 @@ class ProxyConfig:
         else:
             print(f"[✗] Failed: {output}")
 
-
     def get_proxy(self) -> str:
         """Get current proxy settings on the device.
 
@@ -171,20 +185,20 @@ class ProxyConfig:
         """
         output = self.__adb("shell settings get global http_proxy")
         print(f"[*] Current proxy: {output.strip()}")
-        return output.strip()   
+        return output.strip()
 
 
 class PhoneDevice:
     __device_id: str
 
     KEYCODE = {
-        "back":        4,
-        "home":        3,
-        "recent":      187,
-        "enter":       66,
-        "delete":      67,
-        "power":       26,
-        "volume_up":   24,
+        "back": 4,
+        "home": 3,
+        "recent": 187,
+        "enter": 66,
+        "delete": 67,
+        "power": 26,
+        "volume_up": 24,
         "volume_down": 25,
     }
 
@@ -194,10 +208,9 @@ class PhoneDevice:
         Example:
             >>> phone = PhoneDevice("emulator-5554")
         """
-        self.__device_id = device_id  
+        self.__device_id = device_id
         self.files: Dict[str, File] = {}
         self.proxy_config = ProxyConfig(device_id)
-
 
     def __adb(self, command: str) -> str:
         return adb(command, self.__device_id)
@@ -214,16 +227,18 @@ class PhoneDevice:
             >>> pkg = phone.get_package_name_no_aapt("./app.apk")
         """
         try:
-            with zipfile.ZipFile(apk_path, 'r') as apk:
-                with apk.open('AndroidManifest.xml') as f:
+            with zipfile.ZipFile(apk_path, "r") as apk:
+                with apk.open("AndroidManifest.xml") as f:
                     content = f.read()
                     matches = re.findall(
-                        rb'([a-zA-Z][a-zA-Z0-9_]*(?:\.[a-zA-Z][a-zA-Z0-9_]*){2,})',
-                        content
+                        rb"([a-zA-Z][a-zA-Z0-9_]*(?:\.[a-zA-Z][a-zA-Z0-9_]*){2,})",
+                        content,
                     )
                     for m in matches:
-                        decoded = m.decode('utf-8', errors='ignore')
-                        if decoded.count('.') >= 1 and not decoded.startswith('android'):
+                        decoded = m.decode("utf-8", errors="ignore")
+                        if decoded.count(".") >= 1 and not decoded.startswith(
+                            "android"
+                        ):
                             return decoded
         except Exception as e:
             print(f"[!] Lỗi đọc APK: {e}")
@@ -237,8 +252,7 @@ class PhoneDevice:
             >>> pkg = phone.get_package_name("./apk/app.apk")
         """
         result = subprocess.run(
-            f"aapt dump badging {apk_path}",
-            shell=True, capture_output=True, text=True
+            f"aapt dump badging {apk_path}", shell=True, capture_output=True, text=True
         )
         for line in result.stdout.splitlines():
             if line.startswith("package:"):
@@ -248,30 +262,39 @@ class PhoneDevice:
         print("[!] aapt không khả dụng, dùng fallback...")
         return self.get_package_name_no_aapt(apk_path)
 
-    def install_and_open(self, apk_path: str):
-        """Install an APK and launch its main activity.
+    def install(self, apk_path: str) -> bool:
+        """Install an APK file to the device.
 
         Example:
             >>> phone = PhoneDevice("emulator-5554")
-            >>> phone.install_and_open("./apk/app.apk")
+            >>> phone.install("./apk/app.apk")
         """
         print(f"[*] Đang cài: {apk_path}")
         output = self.__adb(f"install -r {apk_path}")
 
         if "Failure" in output or "failed" in output.lower():
             print("[✗] Cài đặt thất bại!")
-            return
+            return False
 
-        package = self.get_package_name(apk_path)  # 🐛 fix: self.
+        print("[✓] Cài đặt thành công!")
+        return True
+
+    def open(self, apk_path: str) -> bool:
+        """Open an installed APK by resolving package and launchable activity.
+
+        Example:
+            >>> phone = PhoneDevice("emulator-5554")
+            >>> phone.open("./apk/app.apk")
+        """
+        package = self.get_package_name(apk_path)
         if not package:
             print("[!] Không lấy được package name")
-            return
+            return False
 
         print(f"[*] Package: {package}")
 
         result = subprocess.run(
-            f"aapt dump badging {apk_path}",
-            shell=True, capture_output=True, text=True
+            f"aapt dump badging {apk_path}", shell=True, capture_output=True, text=True
         )
         activity = None
         for line in result.stdout.splitlines():
@@ -284,7 +307,21 @@ class PhoneDevice:
             self.__adb(f"shell am start -n {package}/{activity}")
         else:
             print("[*] Mở app bằng monkey...")
-            self.__adb(f"shell monkey -p {package} -c android.intent.category.LAUNCHER 1")
+            self.__adb(
+                f"shell monkey -p {package} -c android.intent.category.LAUNCHER 1"
+            )
+
+        return True
+
+    def install_and_open(self, apk_path: str):
+        """Install an APK and launch it.
+
+        Example:
+            >>> phone = PhoneDevice("emulator-5554")
+            >>> phone.install_and_open("./apk/app.apk")
+        """
+        if self.install(apk_path):
+            self.open(apk_path)
 
     def uninstall_app(self, package_name: str):
         """Uninstall an app by its package name.
@@ -307,7 +344,9 @@ class PhoneDevice:
             >>> phone = PhoneDevice("emulator-5554")
             >>> phone.open_app("com.example.app")
         """
-        self.__adb(f"shell monkey -p {package_name} -c android.intent.category.LAUNCHER 1")
+        self.__adb(
+            f"shell monkey -p {package_name} -c android.intent.category.LAUNCHER 1"
+        )
 
     def close_app(self, package_name: str):
         """Force-stop an app by package name.
@@ -325,9 +364,9 @@ class PhoneDevice:
             >>> phone = PhoneDevice("emulator-5554")
             >>> phone.restart_app("com.example.app")
         """
-        self.close_app(package_name)   # 🐛 fix: bỏ self thừa
+        self.close_app(package_name)  # 🐛 fix: bỏ self thừa
         time.sleep(1)
-        self.open_app(package_name)    # 🐛 fix: bỏ self thừa
+        self.open_app(package_name)  # 🐛 fix: bỏ self thừa
 
     def is_app_running(self, package_name: str) -> bool:
         """Check whether an app process is currently running.
@@ -378,7 +417,6 @@ class PhoneDevice:
         else:
             print(f"[✗] Failed: {output}")
 
-
     def revoke_permission(self, package_name: str, permission: str):
         """Revoke a single permission from an app.
 
@@ -390,7 +428,6 @@ class PhoneDevice:
             print(f"[✓] Revoked: {permission}")
         else:
             print(f"[✗] Failed: {output}")
-
 
     def grant_all_permissions(self, package_name: str):
         """Grant all common permissions to an app at once.
@@ -421,7 +458,6 @@ class PhoneDevice:
             self.grant_permission(package_name, perm)
         print(f"[✓] Done!")
 
-
     def list_permissions(self, package_name: str) -> list:
         """List all permissions (granted/denied) of an app.
 
@@ -429,7 +465,7 @@ class PhoneDevice:
             >>> perms = phone.list_permissions("com.example.app")
         """
         output = self.__adb(f"shell dumpsys package {package_name}")
-        
+
         permissions = []
         for line in output.splitlines():
             if "permission" in line.lower() and "granted=" in line.lower():
@@ -437,7 +473,6 @@ class PhoneDevice:
                 print(f"  {line.strip()}")
 
         return permissions
-
 
     # ==========================================
     # DEVICE INFO
@@ -460,11 +495,11 @@ class PhoneDevice:
             >>> info = phone.get_device_info()
         """
         props = {
-            "model":       "ro.product.model",
+            "model": "ro.product.model",
             "android_ver": "ro.build.version.release",
-            "sdk":         "ro.build.version.sdk",
-            "brand":       "ro.product.brand",
-            "arch":        "ro.product.cpu.abi",
+            "sdk": "ro.build.version.sdk",
+            "brand": "ro.product.brand",
+            "arch": "ro.product.cpu.abi",
         }
         info = {}
         for key, prop in props.items():
@@ -540,7 +575,7 @@ class PhoneDevice:
         Example:
             >>> phone.input_text_unicode("Xin chào")
         """
-        encoded = base64.b64encode(text.encode('utf-8')).decode('utf-8')
+        encoded = base64.b64encode(text.encode("utf-8")).decode("utf-8")
         self.__adb(f"shell am broadcast -a ADB_INPUT_B64 --es msg '{encoded}'")
 
     # ==========================================
@@ -612,7 +647,9 @@ class PhoneDevice:
         Example:
             >>> phone.find_file(".json", "/sdcard")
         """
-        output = self.__adb(f"shell find {search_path} -name '*{filename}*' 2>/dev/null")
+        output = self.__adb(
+            f"shell find {search_path} -name '*{filename}*' 2>/dev/null"
+        )
         results = [line for line in output.splitlines() if line.strip()]
         print(f"[*] Tìm thấy {len(results)} file:")
         for f in results:
@@ -657,12 +694,11 @@ class PhoneDevice:
         """
         result = subprocess.run(
             f"adb -s {self.__device_id} logcat -d -t {lines}",
-            shell=True, capture_output=True, text=True
+            shell=True,
+            capture_output=True,
+            text=True,
         )
-        filtered = [
-            line for line in result.stdout.splitlines()
-            if package_name in line
-        ]
+        filtered = [line for line in result.stdout.splitlines() if package_name in line]
         return "\n".join(filtered)
 
     def connect(self, host: str, port: int = 5555) -> bool:
