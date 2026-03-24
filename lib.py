@@ -301,6 +301,82 @@ class PhoneDevice:
         ]
 
     # ==========================================
+    # PERMISSIONS
+    # ==========================================
+    def grant_permission(self, package_name: str, permission: str):
+        """Grant a single permission to an app.
+
+        Example:
+            >>> phone.grant_permission("com.example.app", "android.permission.CAMERA")
+        """
+        output = self.__adb(f"shell pm grant {package_name} {permission}")
+        if not output.strip():
+            print(f"[✓] Granted: {permission}")
+        else:
+            print(f"[✗] Failed: {output}")
+
+
+    def revoke_permission(self, package_name: str, permission: str):
+        """Revoke a single permission from an app.
+
+        Example:
+            >>> phone.revoke_permission("com.example.app", "android.permission.CAMERA")
+        """
+        output = self.__adb(f"shell pm revoke {package_name} {permission}")
+        if not output.strip():
+            print(f"[✓] Revoked: {permission}")
+        else:
+            print(f"[✗] Failed: {output}")
+
+
+    def grant_all_permissions(self, package_name: str):
+        """Grant all common permissions to an app at once.
+
+        Example:
+            >>> phone.grant_all_permissions("com.example.app")
+        """
+        PERMISSIONS = [
+            "android.permission.CAMERA",
+            "android.permission.RECORD_AUDIO",
+            "android.permission.READ_CONTACTS",
+            "android.permission.WRITE_CONTACTS",
+            "android.permission.ACCESS_FINE_LOCATION",
+            "android.permission.ACCESS_COARSE_LOCATION",
+            "android.permission.READ_EXTERNAL_STORAGE",
+            "android.permission.WRITE_EXTERNAL_STORAGE",
+            "android.permission.READ_PHONE_STATE",
+            "android.permission.CALL_PHONE",
+            "android.permission.READ_CALL_LOG",
+            "android.permission.SEND_SMS",
+            "android.permission.READ_SMS",
+            "android.permission.BLUETOOTH",
+            "android.permission.BODY_SENSORS",
+        ]
+
+        print(f"[*] Granting all permissions: {package_name}")
+        for perm in PERMISSIONS:
+            self.grant_permission(package_name, perm)
+        print(f"[✓] Done!")
+
+
+    def list_permissions(self, package_name: str) -> list:
+        """List all permissions (granted/denied) of an app.
+
+        Example:
+            >>> perms = phone.list_permissions("com.example.app")
+        """
+        output = self.__adb(f"shell dumpsys package {package_name}")
+        
+        permissions = []
+        for line in output.splitlines():
+            if "permission" in line.lower() and "granted=" in line.lower():
+                permissions.append(line.strip())
+                print(f"  {line.strip()}")
+
+        return permissions
+
+
+    # ==========================================
     # DEVICE INFO
     # ==========================================
 
