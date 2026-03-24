@@ -6,6 +6,8 @@ import os
 import zipfile
 import re
 
+from typing import Dict
+
 
 def adb(command: str, device_id: str = None) -> str:
     """Run an ADB command, optionally targeting a specific device.
@@ -114,6 +116,64 @@ class File:
         print(f"[✓] Dump xong! Lưu tại: {save_path}")
 
 
+class ProxyConfig:
+    def __init__(self, device_id: str):
+        """Configuration for setting up a proxy on the device.
+
+        Example:
+            >>> proxy = ProxyConfig("emulator-5554")
+        """
+        self.__device_id = device_id
+
+    def __adb(self, command: str) -> str:
+        return adb(command, self.__device_id)
+
+    def set_proxy(self, host: str, port: int, username: str = None, password: str = None):
+        """Set HTTP proxy for the device, with optional authentication.
+
+        Example:
+            >>> phone.set_proxy("192.168.1.5", 8080)
+            >>> phone.set_proxy("192.168.1.5", 8080, username="user", password="pass")
+        """
+
+        # Proxy không có tài khoản
+        if not username and not password:
+            output = self.__adb(f"shell settings put global http_proxy {host}:{port}")
+
+        # Proxy có tài khoản → format: user:pass@host:port
+        else:
+            output = self.__adb(f"shell settings put global http_proxy {username}:{password}@{host}:{port}")
+
+        if not output.strip():
+            print(f"[✓] Proxy set: {host}:{port}")
+        else:
+            print(f"[✗] Failed: {output}")
+
+    def clear_proxy(self):
+        """Remove proxy settings from the device.
+
+        Example:
+            >>> phone.clear_proxy()
+        """
+        output = self.__adb("shell settings put global http_proxy :0")
+        if not output.strip():
+            print("[✓] Proxy cleared!")
+        else:
+            print(f"[✗] Failed: {output}")
+
+
+    def get_proxy(self) -> str:
+        """Get current proxy settings on the device.
+
+        Example:
+            >>> proxy = phone.get_proxy()
+            >>> print(proxy)
+        """
+        output = self.__adb("shell settings get global http_proxy")
+        print(f"[*] Current proxy: {output.strip()}")
+        return output.strip()   
+
+
 class PhoneDevice:
     __device_id: str
 
@@ -134,7 +194,10 @@ class PhoneDevice:
         Example:
             >>> phone = PhoneDevice("emulator-5554")
         """
-        self.__device_id = device_id  # 🐛 fix: thiếu gán
+        self.__device_id = device_id  
+        self.files: Dict[str, File] = {}
+        self.proxy_config = ProxyConfig(device_id)
+
 
     def __adb(self, command: str) -> str:
         return adb(command, self.__device_id)
