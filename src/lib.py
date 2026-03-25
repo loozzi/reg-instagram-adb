@@ -455,7 +455,7 @@ class PhoneDevice:
         print(f"[*] Granting all permissions: {package_name}")
         for perm in PERMISSIONS:
             self.grant_permission(package_name, perm)
-        print(f"[✓] Done!")
+        print("[✓] Done!")
 
     def list_permissions(self, package_name: str) -> list:
         """List all permissions (granted/denied) of an app.
@@ -587,9 +587,9 @@ class PhoneDevice:
         Example:
             >>> phone.screenshot("./screen.png")
         """
-        self.__adb(f"shell screencap /sdcard/_screen.png")
+        self.__adb("shell screencap /sdcard/_screen.png")
         self.__adb(f"pull /sdcard/_screen.png {save_path}")
-        self.__adb(f"shell rm /sdcard/_screen.png")
+        self.__adb("shell rm /sdcard/_screen.png")
         print(f"[✓] Saved: {save_path}")
 
     def _enable_pointer_location(self):
@@ -613,7 +613,7 @@ class PhoneDevice:
         os.makedirs(save_path, exist_ok=True)
         print(f"[*] Đang dump: {device_path} → {save_path}")
         self.__adb(f"pull {device_path} {save_path}")
-        print(f"[✓] Xong!")
+        print("[✓] Xong!")
 
     def push_file(self, local_path: str, device_path: str):
         """Push a local file to the device.
@@ -717,3 +717,72 @@ class PhoneDevice:
             >>> phone.disconnect()
         """
         adb(f"disconnect {self.__device_id}")
+
+    # ==========================================
+    # COOKIE EXTRACTION (ROOT REQUIRED)
+    # ==========================================
+
+    def get_cookie(self, package_name: str, save_path: str = "./dump") -> str:
+        """Extract Instagram cookies from PropertiesStore_v02 on a rooted device.
+
+        Instagram Lite stores cookies as a JSON array inside the binary file
+        files/PropertiesStore_v02. This method pulls that file, extracts the
+        JSON cookie list via regex, and returns 'name=value; ...' format.
+
+        Requires root access on the device.
+
+        Example:
+            >>> cookie = phone.get_cookie("com.instagram.lite")
+            >>> print(cookie)
+        """
+        os.makedirs(save_path, exist_ok=True)
+        remote_src = f"/data/data/{package_name}/files/PropertiesStore_v02"
+        tmp_remote = "/sdcard/_props_tmp"
+        local_file = os.path.join(save_path, "PropertiesStore_v02")
+
+        print(f"[*] Pulling PropertiesStore_v02 from {package_name}...")
+        self.__adb(f"shell su -c 'cp {remote_src} {tmp_remote} && chmod 644 {tmp_remote}'")
+        self.__adb(f"pull {tmp_remote} {local_file}")
+        self.__adb(f"shell rm -f {tmp_remote}")
+
+        if not os.path.exists(local_file) or os.path.getsize(local_file) == 0:
+            print("[!] Không lấy được PropertiesStore_v02 — kiểm tra thiết bị đã root chưa.")
+            return ""
+
+        with open(local_file, "rb") as f:
+            raw = f.read().decode("utf-8", errors="ignore")
+
+        # Cookie array pattern: [{"is_secure":...,"name":"mid",...},...]
+        match = re.search(r'(\[{"is_secure".*?"name":"ig-u-rur"[^]]*\]})', raw)
+        if not match:
+            print("[!] Không tìm thấy cookie array trong PropertiesStore_v02.")
+            return ""
+
+        import json
+        try:
+            cookies = json.loads(match.group(1))
+        except json.JSONDecodeError as e:
+            print(f"[!] Lỗi parse JSON: {e}")
+            return ""
+
+        # Extract sessionid from the authorization Bearer token (base64 encoded)
+        session_id = ""
+        for c in cookies:
+            if c.get("name") == "authorization":
+                bearer = c["value"]
+                b64 = bearer.replace("Bearer IGT:2:", "")
+                try:
+                    payload = json.loads(base64.b64decode(b64 + "==").decode())
+                    session_id = payload.get("sessionid", "")
+                except Exception:
+                    pass
+                break
+
+        # Build cookie string from the JSON array + sessionid
+        parts = {c["name"]: c["value"] for c in cookies if c.get("name") and c.get("value")}
+        if session_id:
+            parts["sessionid"] = session_id
+
+        cookie_str = "; ".join(f"{k}={v}" for k, v in parts.items())
+        print(f"[+] Cookie ({len(parts)} entries): {cookie_str[:100]}...")
+        return cookie_str

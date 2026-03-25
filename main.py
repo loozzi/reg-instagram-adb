@@ -26,14 +26,15 @@ def register_ig(phone: PhoneDevice):
     phone.tap(700, 1025)
     phone.wait(1)
 
-    email = "example@example.com"
+    email = "facebook.meta.6778@gmail.com"
 
     phone.input_text(email)
     phone.wait(1)
     phone.tap(700, 760)
     phone.wait(20)
     # TODO: Handle verification code input
-    otp = "123456"  # Replace with actual OTP retrieval method
+    # otp = "123456"  # Replace with actual OTP retrieval method
+    otp = input("Enter the OTP received: ")
     phone.input_text(otp)
     phone.tap(700, 700)
     phone.wait(5)
@@ -63,8 +64,19 @@ def register_ig(phone: PhoneDevice):
     phone.wait(5)
 
     phone.tap(700, 2600)
+    phone.wait(15)
 
-    # TODO: Get cookie here
+    phone.tap(1350, 150)
+    phone.wait(0.5)
+    phone.tap(1350, 150)
+    phone.wait(0.5)
+
+    phone.tap(700, 2650)
+    phone.wait(3)
+
+    cookie = phone.get_cookie(package_name)
+    if cookie:
+        print(f"[+] Cookie: {cookie}")
 
 
 def __main__():
