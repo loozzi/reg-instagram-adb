@@ -6,7 +6,7 @@ Run:
 You can modify DEVICE_ID and PACKAGE_NAME below to match your environment.
 """
 
-from lib import adb, get_devices, File, PhoneDevice
+from src.lib import adb, get_devices, File, PhoneDevice
 
 
 # Update these values for your setup.

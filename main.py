@@ -1,6 +1,6 @@
 import random
 
-from lib import PhoneDevice, get_devices
+from src.lib import PhoneDevice, get_devices
 
 
 def register_ig(phone: PhoneDevice):
